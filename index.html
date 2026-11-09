@@ -196,10 +196,202 @@ function updateRecent(records,file,position){
 }
 
 // END lib/reader-utils.js
+// BEGIN lib/pdf-viewport.js
+// Page heights include the gap after each page. Indices are zero based.
+function pdfViewportPages(heights, scrollTop, viewportHeight, loaded=[], maxPages=6){
+ const renderStart=scrollTop-viewportHeight*1.5;
+ const renderEnd=scrollTop+viewportHeight*2.5;
+ const releaseStart=scrollTop-viewportHeight*3;
+ const releaseEnd=scrollTop+viewportHeight*4;
+ const center=scrollTop+viewportHeight/2;
+ let top=0;
+ const near=[];
+ const keep=new Set();
+ for(let index=0;index<heights.length;index++){
+  const bottom=top+Math.max(0,Number(heights[index])||0);
+  if(bottom>=releaseStart&&top<=releaseEnd)keep.add(index);
+  if(bottom>=renderStart&&top<=renderEnd){
+   near.push({index,distance:Math.max(0,top-center,center-bottom)});
+  }
+  top=bottom;
+ }
+ near.sort((a,b)=>a.distance-b.distance||a.index-b.index);
+ const render=near.slice(0,maxPages).map(x=>x.index);
+ const release=loaded.filter(index=>!keep.has(index));
+ return {render,release};
+}
+
+// END lib/pdf-viewport.js
 /*__LIB_END__*/
 /*__APP_START__*/
+// Canvas and text DOM exist only near the viewport. Text coordinates live in
+// scale-1 PDF viewport units and remain valid while pages are not rendered.
+let pdfSession=null;
+const PDF_CANVAS_BUDGET=36*1024*1024;
+const yieldToBrowser=()=>new Promise(resolve=>setTimeout(resolve,0));
+function pdfAlive(session){return pdfSession===session&&session.alive&&state.kind==='pdf'}
+function pdfWidth(session){return Math.max(100,Math.min($('content').clientWidth,innerWidth-32))*state.zoom}
+function updatePdfPageSize(session,entry){
+ if(!pdfAlive(session))return;
+ const width=pdfWidth(session),ratio=entry.baseHeight/entry.baseWidth;
+ entry.wrap.style.width=`${width}px`;
+ entry.wrap.style.height=`${width*ratio}px`;
+}
+function releasePdfPage(entry){
+ entry.token++;
+ if(entry.task){try{entry.task.cancel()}catch{}}
+ if(entry.canvas){entry.canvas.width=0;entry.canvas.height=0;entry.canvas.remove();entry.canvas=null}
+ if(entry.layer){entry.layer.remove();entry.layer=null}
+ entry.settling=entry.renderPromise?.catch(()=>{})||entry.settling;
+ entry.renderPromise=null;
+ entry.task=null;
+}
+function closePdfSession(){
+ if(!pdfSession)return;
+ pdfSession.alive=false;
+ pdfSession.observer?.disconnect();
+ for(const entry of pdfSession.pages)releasePdfPage(entry);
+ void pdfSession.doc.destroy().catch(()=>{});
+ pdfSession=null;
+}
+async function getPdfPage(session,entry){
+ if(entry.page)return entry.page;
+ if(!entry.pagePromise)entry.pagePromise=session.doc.getPage(entry.number).then(page=>{
+  entry.page=page;
+  const viewport=page.getViewport({scale:1});
+  entry.baseWidth=viewport.width;entry.baseHeight=viewport.height;
+  updatePdfPageSize(session,entry);
+  return page;
+ }).catch(error=>{entry.pagePromise=null;throw error});
+ return entry.pagePromise;
+}
+function refreshPdfLines(session){
+ if(!pdfAlive(session))return;
+ const current=state.lines[state.index];
+ state.lines=session.pages.flatMap(entry=>entry.lines||[]);
+ state.lines.forEach((line,index)=>line.index=index);
+ if(current){const found=state.lines.indexOf(current);if(found>=0)state.index=found}
+ paint();
+}
+async function getPdfText(session,entry){
+ if(entry.textPromise)return entry.textPromise;
+ entry.textPromise=(async()=>{
+  const page=await getPdfPage(session,entry);
+  const content=await page.getTextContent();
+  if(!pdfAlive(session))return null;
+  const viewport=page.getViewport({scale:1});
+  const items=content.items.filter(item=>item.str?.trim()).map(item=>{
+   const [x,y]=viewport.convertToViewportPoint(item.transform[4],item.transform[5]);
+   return {x,y,width:item.width,height:Math.abs(item.transform[3])||item.height,text:item.str};
+  });
+  entry.textContent=content;
+  entry.lines=clusterLines(items,{pageWidth:viewport.width}).map(line=>({...line,kind:'pdf',page:entry.number,pageWidth:viewport.width}));
+  refreshPdfLines(session);
+  return content;
+ })().catch(error=>{entry.textPromise=null;if(pdfAlive(session))notify(`第 ${entry.number} 页文字读取失败：${error.message}`,5000);return null});
+ return entry.textPromise;
+}
+function pdfPixelRatio(width,height){
+ const device=Math.min(devicePixelRatio||1,2);
+ return Math.min(device,Math.sqrt(PDF_CANVAS_BUDGET/(4*width*height)));
+}
+function pdfPageBytes(session,entry){
+ const width=pdfWidth(session),height=width*entry.baseHeight/entry.baseWidth;
+ const ratio=pdfPixelRatio(width,height);
+ return Math.ceil(width*ratio)*Math.ceil(height*ratio)*4;
+}
+function renderPdfPage(session,entry){
+ if(!pdfAlive(session)||entry.canvas||entry.renderPromise)return entry.renderPromise||Promise.resolve();
+ const token=++entry.token;
+ const promise=(async()=>{
+  if(entry.settling)await entry.settling;
+  if(!pdfAlive(session)||token!==entry.token)return;
+  const page=await getPdfPage(session,entry);
+  if(!pdfAlive(session)||token!==entry.token)return;
+  const width=pdfWidth(session),viewport=page.getViewport({scale:width/entry.baseWidth});
+  const ratio=pdfPixelRatio(viewport.width,viewport.height);
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.ceil(viewport.width*ratio));
+  canvas.height=Math.max(1,Math.ceil(viewport.height*ratio));
+  canvas.style.width=`${viewport.width}px`;canvas.style.height=`${viewport.height}px`;
+  entry.canvas=canvas;entry.wrap.prepend(canvas);
+  const task=page.render({canvasContext:canvas.getContext('2d'),viewport,transform:[ratio,0,0,ratio,0,0]});
+  entry.task=task;
+  try{await task.promise}catch(error){if(error?.name!=='RenderingCancelledException'&&pdfAlive(session))notify(`第 ${entry.number} 页显示失败`,5000);return}
+  if(!pdfAlive(session)||token!==entry.token)return;
+  entry.task=null;
+  const content=await getPdfText(session,entry);
+  if(!content||!pdfAlive(session)||token!==entry.token)return;
+  const layer=document.createElement('div');layer.className='text-layer';
+  layer.style.setProperty('--scale-factor',String(viewport.scale));
+  entry.layer=layer;entry.wrap.insertBefore(layer,entry.wrap.querySelector('.page-label'));
+  try{await new pdfjsLib.TextLayer({textContentSource:content,container:layer,viewport}).render()}
+  catch{for(const item of content.items){const span=document.createElement('span');span.textContent=item.str;const [x,y]=viewport.convertToViewportPoint(item.transform[4],item.transform[5]);Object.assign(span.style,{left:`${x}px`,top:`${y-item.height*viewport.scale}px`,fontSize:`${item.height*viewport.scale}px`});layer.append(span)}}
+ })().catch(error=>{if(pdfAlive(session)&&token===entry.token)notify(`第 ${entry.number} 页显示失败：${error.message}`,5000)});
+ entry.renderPromise=promise;
+ void promise.finally(()=>{if(token===entry.token){entry.renderPromise=null;entry.settling=null;entry.task=null}});
+ return promise;
+}
+function pdfScrollGeometry(session){
+ const first=session.pages[0]?.wrap;if(!first)return null;
+ const origin=first.getBoundingClientRect().top+scrollY;
+ return {heights:session.pages.map(entry=>entry.wrap.getBoundingClientRect().height+20),top:scrollY-origin};
+}
+function schedulePdfPages(){
+ const session=pdfSession;if(!session||!pdfAlive(session))return;
+ const geometry=pdfScrollGeometry(session);if(!geometry)return;
+ const loaded=session.pages.flatMap((entry,index)=>entry.canvas||entry.renderPromise?[index]:[]);
+ const {render,release}=pdfViewportPages(geometry.heights,geometry.top,innerHeight,loaded,6);
+ for(const index of release)releasePdfPage(session.pages[index]);
+ let budget=0;const desired=[];
+ for(const index of render){const bytes=pdfPageBytes(session,session.pages[index]);if(budget+bytes<=PDF_CANVAS_BUDGET||!desired.length){desired.push(index);budget+=bytes}}
+ for(const entry of session.pages)if((entry.canvas||entry.renderPromise)&&!desired.includes(entry.number-1))releasePdfPage(entry);
+ for(const index of desired)void renderPdfPage(session,session.pages[index]);
+ paint();
+}
+function queuePdfSchedule(){const session=pdfSession;if(!session||session.queued)return;session.queued=true;requestAnimationFrame(()=>{session.queued=false;if(pdfAlive(session))schedulePdfPages()})}
+async function extractPdfBackground(session){
+ for(let index=1;index<session.pages.length;index++){
+  if(!pdfAlive(session))return;
+  await getPdfText(session,session.pages[index]);
+  await yieldToBrowser();
+ }
+ if(!pdfAlive(session))return;
+ session.textComplete=true;
+ if(state.pendingPdfPosition!=null){const position=state.pendingPdfPosition;state.pendingPdfPosition=null;setFocus(position,true)}
+}
+async function renderPdf(bytes){
+ closePdfSession();
+ const doc=await pdfjsLib.getDocument({data:bytes.slice()}).promise;
+ const session={doc,alive:true,pages:[],observer:null,queued:false,textComplete:false};
+ pdfSession=session;state.pdf=doc;
+ const first=await doc.getPage(1);if(!pdfAlive(session))return;
+ const base=first.getViewport({scale:1});
+ const root=$('content');root.replaceChildren();
+ for(let number=1;number<=doc.numPages;number++){
+  const wrap=document.createElement('div');wrap.className='pdf-page';wrap.id=`page-${number}`;
+  const label=document.createElement('span');label.className='page-label';label.textContent=number;wrap.append(label);root.append(wrap);
+  const entry={number,wrap,page:number===1?first:null,pagePromise:null,baseWidth:base.width,baseHeight:base.height,canvas:null,layer:null,task:null,renderPromise:null,settling:null,textPromise:null,textContent:null,lines:null,token:0};
+  session.pages.push(entry);updatePdfPageSize(session,entry);
+ }
+ const firstText=getPdfText(session,session.pages[0]);
+ await renderPdfPage(session,session.pages[0]);
+ await firstText;
+ if(!pdfAlive(session))return;
+ session.observer=new IntersectionObserver(()=>queuePdfSchedule(),{rootMargin:'150% 0px'});
+ for(const entry of session.pages)session.observer.observe(entry.wrap);
+ queuePdfSchedule();
+ void extractPdfBackground(session);
+}
+function rebuildPdfLayout(){
+ const session=pdfSession;if(!session||!pdfAlive(session))return;
+ for(const entry of session.pages)releasePdfPage(entry);
+ for(const entry of session.pages)updatePdfPageSize(session,entry);
+ queuePdfSchedule();
+}
+
 const $=id=>document.getElementById(id);
-const state={file:null,kind:null,lines:[],index:0,pdf:null,pdfBytes:null,zoom:1,rate:1,autoTimer:null,key:null,history:[],abort:null,selection:'',selectedIndex:0,voice:{en:'',zh:''},pendingAction:null};
+const state={file:null,kind:null,lines:[],index:0,pdf:null,pdfBytes:null,zoom:1,rate:1,autoTimer:null,key:null,history:[],abort:null,selection:'',selectedIndex:0,voice:{en:'',zh:''},pendingAction:null,pendingPdfPosition:null};
 const safeGet=key=>{try{return localStorage.getItem(key)}catch{return null}};
 const safeSet=(key,value)=>{try{localStorage.setItem(key,value);return true}catch{return false}};
 const safeRemove=key=>{try{localStorage.removeItem(key)}catch{}};
@@ -208,7 +400,7 @@ const notify=(message,delay=3800)=>{const el=$('status');el.textContent=message;
 const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function renderRecent(){const box=$('recentList'),items=recent();box.replaceChildren();if(!items.length){box.textContent='还没有记录';return}for(const item of items){const b=document.createElement('button');b.textContent=`${item.name} · 第 ${item.position+1} 行`;b.onclick=()=>{notify('请重新选择这个文件，会回到上次位置');$('fileInput').click()};box.append(b)}}
 function remember(){if(!state.file)return;safeSet(RECENT_KEY,JSON.stringify(updateRecent(recent(),state.file,state.index)));renderRecent()}
-function setFocus(index,scroll=true){if(!state.lines.length)return;state.index=Math.max(0,Math.min(state.lines.length-1,index));remember();paint();if(scroll){const r=lineRect(state.lines[state.index]);if(r)window.scrollTo({top:window.scrollY+r.top-window.innerHeight*.29,behavior:'smooth'})}}
+function setFocus(index,scroll=true,persist=true){if(!state.lines.length)return;state.index=Math.max(0,Math.min(state.lines.length-1,index));if(persist){state.pendingPdfPosition=null;remember()}paint();if(scroll){const r=lineRect(state.lines[state.index]);if(r)window.scrollTo({top:window.scrollY+r.top-window.innerHeight*.29,behavior:'smooth'})}}
 function lineRect(line){if(!line)return null;if(line.kind==='pdf'){const p=$(`page-${line.page}`);if(!p)return null;const box=p.getBoundingClientRect(),scale=box.width/line.pageWidth;return {left:box.left+line.x*scale,right:box.left+(line.x+line.width)*scale,top:box.top+(line.y-line.height)*scale,bottom:box.top+(line.y+3)*scale}}const top=line.top-window.scrollY,bottom=line.bottom-window.scrollY;return {left:line.left,right:line.right,top,bottom}}
 function paint(){const wraps=$('masks'),r=lineRect(state.lines[state.index]);if(!r||$('reader').hidden){wraps.hidden=true;return}wraps.hidden=false;const a=Math.max(0,Math.min(innerHeight,r.top-4)),b=Math.max(a,Math.min(innerHeight,r.bottom+4)),l=Math.max(0,Math.min(innerWidth,r.left-4)),right=Math.max(l,Math.min(innerWidth,r.right+4));const m=wraps.querySelectorAll('.mask');[[0,0,innerWidth,a],[0,b,innerWidth,innerHeight-b],[0,a,l,b-a],[right,a,innerWidth-right,b-a]].forEach(([x,y,w,h],i)=>Object.assign(m[i].style,{left:`${x}px`,top:`${y}px`,width:`${w}px`,height:`${h}px`}));Object.assign(wraps.querySelector('.focus-outline').style,{left:`${l}px`,top:`${a}px`,width:`${right-l}px`,height:`${b-a}px`})}
 function moveBy(step,valid=()=>true){if(!valid())return false;const next=state.index+step;if(next<0||next>=state.lines.length)return false;setFocus(next);return true}
@@ -222,9 +414,8 @@ function cleanHtml(raw){const parsed=new DOMParser().parseFromString(precleanHtm
 function applyObsidianMarks(root){const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const nodes=[];let node;while((node=walker.nextNode()))if(node.textContent.includes('=='))nodes.push(node);for(const textNode of nodes){const parts=textNode.textContent.split(/==([^=\n]+)==/g);if(parts.length<2)continue;const fragment=document.createDocumentFragment();parts.forEach((part,i)=>{if(i%2){const mark=document.createElement('mark');mark.textContent=part;fragment.append(mark)}else fragment.append(document.createTextNode(part))});textNode.replaceWith(fragment)}}
 function renderText(text){$('content').replaceChildren();for(const para of text.replace(/\r\n?/g,'\n').split(/\n\s*\n/)){const p=document.createElement('p');p.textContent=para;$('content').append(p)}}
 function collectVisualLines(){const root=$('content'),selector='h1,h2,h3,h4,h5,h6,p,li,pre,table,blockquote,figcaption,div.callout,details';const blocks=[...root.querySelectorAll(selector)].filter(el=>!el.parentElement.closest('pre,table,details')&&(!el.matches('blockquote,li,div.callout')||!el.querySelector('p,pre,table')));const rects=[];blocks.forEach((block,blockIndex)=>{if(block.matches('pre,table,details')){const r=block.getBoundingClientRect();rects.push({left:r.left,right:r.right,top:r.top+scrollY,bottom:r.bottom+scrollY,text:block.innerText,blockIndex,atomic:true,heading:false});return}const walker=document.createTreeWalker(block,NodeFilter.SHOW_TEXT,{acceptNode:n=>n.parentElement.closest('pre,table,details')?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT});let node;while((node=walker.nextNode())){const text=node.textContent||'';const re=/\S+\s*/g;let match;while((match=re.exec(text))){const range=document.createRange();range.setStart(node,match.index);range.setEnd(node,match.index+match[0].length);for(const r of range.getClientRects())rects.push({left:r.left,right:r.right,top:r.top+scrollY,bottom:r.bottom+scrollY,text:match[0].trim(),blockIndex,atomic:false,heading:block.matches('h1,h2,h3,h4,h5,h6')})}}});return groupVisualRects(rects).map((l,i)=>({...l,index:i,kind:'visual',heading:blocks[l.blockIndex]?.matches('h1,h2,h3,h4,h5,h6')||false}))}
-async function renderPdf(bytes){const doc=await pdfjsLib.getDocument({data:bytes.slice()}).promise;state.pdf=doc;const root=$('content');root.replaceChildren();const all=[];for(let n=1;n<=doc.numPages;n++){const page=await doc.getPage(n),base=page.getViewport({scale:1}),width=Math.max(100,Math.min(root.clientWidth,innerWidth-32))*state.zoom,viewport=page.getViewport({scale:width/base.width});const wrap=document.createElement('div');wrap.className='pdf-page';wrap.id=`page-${n}`;wrap.style.width=`${viewport.width}px`;wrap.style.height=`${viewport.height}px`;const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');const pixelRatio=Math.min(devicePixelRatio||1,2);canvas.width=Math.ceil(viewport.width*pixelRatio);canvas.height=Math.ceil(viewport.height*pixelRatio);canvas.style.width=`${viewport.width}px`;canvas.style.height=`${viewport.height}px`;wrap.append(canvas);const layer=document.createElement('div');layer.className='text-layer';wrap.append(layer);const label=document.createElement('span');label.className='page-label';label.textContent=n;wrap.append(label);root.append(wrap);await page.render({canvasContext:ctx,viewport,transform:[pixelRatio,0,0,pixelRatio,0,0]}).promise;const text=await page.getTextContent();try{await new pdfjsLib.TextLayer({textContentSource:text,container:layer,viewport}).render()}catch{for(const item of text.items){const span=document.createElement('span');span.textContent=item.str;const [x,y]=viewport.convertToViewportPoint(item.transform[4],item.transform[5]);Object.assign(span.style,{left:`${x}px`,top:`${y-item.height*viewport.scale}px`,fontSize:`${item.height*viewport.scale}px`});layer.append(span)}}const items=text.items.filter(x=>x.str?.trim()).map(item=>{const [x,y]=viewport.convertToViewportPoint(item.transform[4],item.transform[5]);return {x,y,width:item.width*viewport.scale,height:Math.abs(item.transform[3])*viewport.scale||item.height*viewport.scale,text:item.str}});all.push(...clusterLines(items,{pageWidth:viewport.width}).map(line=>({...line,kind:'pdf',page:n,pageWidth:viewport.width})))}state.lines=all.map((line,index)=>({...line,index}))}
 function detectKind(file){const name=file.name.toLowerCase();if(name.endsWith('.pdf')||file.type==='application/pdf')return 'pdf';if(/\.md$|\.markdown$/.test(name))return 'md';if(/\.html?$/.test(name))return 'html';return 'txt'}
-async function openFile(file){if(!file)return;controller.stop();stopAuto();state.abort?.abort();state.file={name:file.name,type:file.type||detectKind(file)};state.kind=detectKind(file);state.history=[];state.index=0;state.zoom=1;$('home').hidden=true;$('reader').hidden=false;$('toolbar').hidden=false;$('topOpen').hidden=false;$('pdfZoom').hidden=state.kind!=='pdf';$('content').classList.toggle('pdf-content',state.kind==='pdf');$('fileName').textContent=file.name;notify('正在打开文件…',30000);try{if(state.kind==='pdf'){state.pdfBytes=new Uint8Array(await file.arrayBuffer());await renderPdf(state.pdfBytes)}else{const raw=await file.text();if(state.kind==='md'){if(!window.markdownit||!window.DOMPurify)throw new Error('阅读库未加载');const {front,source}=markdownSource(raw);const md=markdownit({html:false,linkify:true,breaks:false});const safe=DOMPurify.sanitize(md.render(source),{FORBID_TAGS:['script','iframe','form'],FORBID_ATTR:['style']});$('content').innerHTML=front+safe;applyObsidianMarks($('content'))}else if(state.kind==='html'){if(!window.DOMPurify)throw new Error('阅读库未加载');$('content').innerHTML=cleanHtml(raw)}else renderText(raw);state.lines=collectVisualLines()}const saved=recent().find(x=>x.name===file.name&&x.type===state.file.type);setFocus(saved?.position||0,true);$('status').hidden=true;if(!state.lines.length)notify('文件中没有可阅读的文字')}catch(error){notify(`打开失败：${error.message||'文件无法读取'}`,7000);$('home').hidden=false;$('reader').hidden=true;$('toolbar').hidden=true;$('topOpen').hidden=true;$('pdfZoom').hidden=true}}
+async function openFile(file){if(!file)return;controller.stop();stopAuto();state.abort?.abort();closePdfSession();state.pdf=null;state.pdfBytes=null;state.file={name:file.name,type:file.type||detectKind(file)};state.kind=detectKind(file);state.history=[];state.index=0;state.zoom=1;$('home').hidden=true;$('reader').hidden=false;$('toolbar').hidden=false;$('topOpen').hidden=false;$('pdfZoom').hidden=state.kind!=='pdf';$('content').classList.toggle('pdf-content',state.kind==='pdf');$('fileName').textContent=file.name;notify('正在打开文件…',30000);try{if(state.kind==='pdf'){state.pdfBytes=new Uint8Array(await file.arrayBuffer());const saved=recent().find(x=>x.name===file.name&&x.type===state.file.type);state.pendingPdfPosition=saved?.position||null;await renderPdf(state.pdfBytes)}else{const raw=await file.text();if(state.kind==='md'){if(!window.markdownit||!window.DOMPurify)throw new Error('阅读库未加载');const {front,source}=markdownSource(raw);const md=markdownit({html:false,linkify:true,breaks:false});const safe=DOMPurify.sanitize(md.render(source),{FORBID_TAGS:['script','iframe','form'],FORBID_ATTR:['style']});$('content').innerHTML=front+safe;applyObsidianMarks($('content'))}else if(state.kind==='html'){if(!window.DOMPurify)throw new Error('阅读库未加载');$('content').innerHTML=cleanHtml(raw)}else renderText(raw);state.lines=collectVisualLines()}if(state.kind==='pdf')setFocus(0,true,false);else{const saved=recent().find(x=>x.name===file.name&&x.type===state.file.type);setFocus(saved?.position||0,true)}$('status').hidden=true;if(!state.lines.length)notify('文件中没有可阅读的文字')}catch(error){notify(`打开失败：${error.message||'文件无法读取'}`,7000);$('home').hidden=false;$('reader').hidden=true;$('toolbar').hidden=true;$('topOpen').hidden=true;$('pdfZoom').hidden=true}}
 function indexNearPoint(x,y){let best=state.index,distance=Infinity;for(const line of state.lines){const r=lineRect(line);if(!r)continue;const d=Math.max(0,r.top-y,y-r.bottom)*3+Math.max(0,r.left-x,x-r.right);if(d<distance){distance=d;best=line.index}}return best}
 function selectionText(){const selection=window.getSelection();if(!selection||selection.isCollapsed)return '';return selection.toString().trim()}
 function showSelectionMenu(){const text=selectionText(),menu=$('selectionMenu');if(!text||!$('content').contains(window.getSelection()?.anchorNode)){menu.hidden=true;return}const r=window.getSelection().getRangeAt(0).getBoundingClientRect();state.selection=text;state.selectedIndex=indexNearPoint(r.left,r.top);menu.hidden=false;const top=Math.min(innerHeight-menu.offsetHeight-12,Math.max(8,r.bottom+12));Object.assign(menu.style,{top:`${top}px`,left:`${Math.max(8,Math.min(innerWidth-menu.offsetWidth-8,r.left))}px`})}
@@ -236,8 +427,8 @@ async function streamDeepSeek(messages,onText){state.lastError='';if(!keyAvailab
 function openSheet(mode){$('sheet').hidden=false;$('sheetTitle').textContent=mode==='translate'?'翻译':'问 AI';$('askForm').hidden=mode==='translate';$('newChat').hidden=mode==='translate';$('sheetBody').replaceChildren();$('settings').hidden=true}
 async function askAI(mode,text=state.selection,index=state.selectedIndex){if(!text)return;state.pendingAction={mode,text,index};if(!keyAvailable())return;state.pendingAction=null;const context=selectedContext(index),line=state.lines[index],location=state.kind==='pdf'?`第 ${line?.page||1} 页`:'当前小节';openSheet(mode);if(mode==='ask')appendMessage('user',text);const user=mode==='translate'?`请翻译并解释选中文本：\n${text}\n\n文件：${state.file.name}\n位置：${location}\n前后两行：\n${state.lines.slice(Math.max(0,index-2),index+3).map(l=>l.text).join('\n')}`:`引用：${text}\n文件：${state.file.name}\n位置：${location}\n上下文：\n${context}`;const system='你是阅读助手。用简体中文回答，术语保留英文。只根据给定上下文回答。'+(mode==='translate'?'先给中文译文，再用一两句话结合上下文解释。':'');const output=appendMessage('assistant','');let answer='';const messages=[{role:'system',content:system},...state.history,{role:'user',content:user}];const ok=await streamDeepSeek(messages,chunk=>{answer+=chunk;output.innerHTML=renderedAnswer(answer);$('sheetBody').scrollTop=$('sheetBody').scrollHeight});if(!ok&&state.lastError&&!answer){output.textContent='⚠️ '+state.lastError;output.classList.add('ai-error')}if(ok&&mode==='ask')state.history.push({role:'user',content:user},{role:'assistant',content:answer})}
 function sendFollowup(){const q=$('question').value.trim();if(!q)return;if(!keyAvailable()){state.pendingAction={mode:'followup',text:q};return}$('question').value='';appendMessage('user',q);const output=appendMessage('assistant','');let answer='';const messages=[{role:'system',content:'你是阅读助手。用简体中文回答，术语保留英文。只根据给定上下文回答。'},...state.history,{role:'user',content:q}];streamDeepSeek(messages,chunk=>{answer+=chunk;output.innerHTML=renderedAnswer(answer)}).then(ok=>{if(!ok&&state.lastError&&!answer){output.textContent='⚠️ '+state.lastError;output.classList.add('ai-error')}if(ok)state.history.push({role:'user',content:q},{role:'assistant',content:answer})})}
-function init(){renderRecent();state.key=safeGet('mobileReader.deepseekKey');$('openBig').onclick=$('topOpen').onclick=()=>$('fileInput').click();$('zoomOut').onclick=()=>{state.zoom=Math.max(.6,Math.round((state.zoom-.2)*10)/10);scheduleReflow()};$('zoomIn').onclick=()=>{state.zoom=Math.min(3,Math.round((state.zoom+.2)*10)/10);scheduleReflow()};$('fileInput').onchange=e=>{openFile(e.target.files?.[0]);e.target.value=''};$('prev').onclick=()=>{controller.jump(valid=>moveBy(-1,valid))};$('next').onclick=()=>{controller.jump(valid=>moveBy(1,valid))};$('play').onclick=()=>{if(controller.active)controller.stop();else controller.start()};$('rate').onclick=()=>{state.rate=nextSpeechRate(state.rate);$('rate').textContent=formatSpeechRate(state.rate)};$('more').onclick=()=>$('settings').hidden=!$('settings').hidden;$('closeSettings').onclick=()=>$('settings').hidden=true;$('shade').oninput=e=>document.documentElement.style.setProperty('--shade',`rgba(22,21,31,${Number(e.target.value)/100})`);$('fontSize').oninput=e=>{document.documentElement.style.setProperty('--reader-size',`${e.target.value}px`);scheduleReflow()};$('autoToggle').onclick=toggleAuto;$('themeToggle').onclick=()=>{const root=document.documentElement;root.dataset.theme=root.dataset.theme==='dark'?'light':'dark';paint()};$('translateLine').onclick=()=>askAI('translate',state.lines[state.index]?.text,state.index);$('voicePreviewEn').onclick=()=>{speechSynthesis.cancel();speakText('This is an English voice preview.')};$('voicePreviewZh').onclick=()=>{speechSynthesis.cancel();speakText('这是中文语音试听。')};for(const lang of ['en','zh'])$(`voice${lang==='en'?'En':'Zh'}`).onchange=e=>state.voice[lang]=e.target.value;updateVoices();speechSynthesis.onvoiceschanged=updateVoices;$('changeKey').onclick=()=>{$('keyInput').value='';$('keyDialog').showModal()};$('deleteKey').onclick=()=>{state.key=null;safeRemove('mobileReader.deepseekKey');notify('key 已删除')};$('saveKey').onclick=()=>{const value=$('keyInput').value.trim();if(!value)return;state.key=value;const saved=safeSet('mobileReader.deepseekKey',value);$('keyHint').textContent=saved?'':'此环境无法保存 key；本页关闭后会丢失。';$('keyDialog').close();if(!saved)notify('key 仅保存在当前页面');const pending=state.pendingAction;if(pending){state.pendingAction=null;if(pending.mode==='followup')sendFollowup();else askAI(pending.mode,pending.text,pending.index)}};$('cancelKey').onclick=()=>{state.pendingAction=null;$('keyDialog').close()};$('closeSheet').onclick=()=>$('sheet').hidden=true;$('abort').onclick=()=>state.abort?.abort();$('newChat').onclick=()=>{state.history=[];$('sheetBody').replaceChildren();notify('已开始新对话')};$('sendQuestion').onclick=sendFollowup;$('selectionMenu').onclick=e=>{const action=e.target.dataset.action;if(!action)return;$('selectionMenu').hidden=true;if(action==='speak'){controller.stop();speechSynthesis.cancel();speakText(state.selection)}else askAI(action,state.selection,state.selectedIndex)};let selectionTimer;document.addEventListener('selectionchange',()=>{clearTimeout(selectionTimer);selectionTimer=setTimeout(showSelectionMenu,300)});$('content').addEventListener('click',e=>{if(selectionText())return;const index=indexNearPoint(e.clientX,e.clientY);controller.jump(valid=>{if(valid())setFocus(index)})});document.addEventListener('scroll',paint,{passive:true});window.addEventListener('resize',scheduleReflow);window.addEventListener('orientationchange',scheduleReflow);document.addEventListener('visibilitychange',()=>{if(document.hidden&&controller.active){controller.stop();notify('返回后点 ▶ 继续',7000)}});document.addEventListener('dragover',e=>{e.preventDefault();document.body.classList.add('drop')});document.addEventListener('dragleave',()=>document.body.classList.remove('drop'));document.addEventListener('drop',e=>{e.preventDefault();document.body.classList.remove('drop');openFile(e.dataTransfer.files?.[0])})}
-let reflowTimer;function scheduleReflow(){clearTimeout(reflowTimer);reflowTimer=setTimeout(async()=>{if(!state.file)return;const old=state.index;if(state.kind==='pdf'){if(state.pdfBytes)await renderPdf(state.pdfBytes);else{paint();return}}else state.lines=collectVisualLines();setFocus(Math.min(old,state.lines.length-1),false)},250)}
+function init(){renderRecent();state.key=safeGet('mobileReader.deepseekKey');$('openBig').onclick=$('topOpen').onclick=()=>$('fileInput').click();$('zoomOut').onclick=()=>{state.zoom=Math.max(.6,Math.round((state.zoom-.2)*10)/10);scheduleReflow()};$('zoomIn').onclick=()=>{state.zoom=Math.min(3,Math.round((state.zoom+.2)*10)/10);scheduleReflow()};$('fileInput').onchange=e=>{openFile(e.target.files?.[0]);e.target.value=''};$('prev').onclick=()=>{controller.jump(valid=>moveBy(-1,valid))};$('next').onclick=()=>{controller.jump(valid=>moveBy(1,valid))};$('play').onclick=()=>{if(controller.active)controller.stop();else controller.start()};$('rate').onclick=()=>{state.rate=nextSpeechRate(state.rate);$('rate').textContent=formatSpeechRate(state.rate)};$('more').onclick=()=>$('settings').hidden=!$('settings').hidden;$('closeSettings').onclick=()=>$('settings').hidden=true;$('shade').oninput=e=>document.documentElement.style.setProperty('--shade',`rgba(22,21,31,${Number(e.target.value)/100})`);$('fontSize').oninput=e=>{document.documentElement.style.setProperty('--reader-size',`${e.target.value}px`);scheduleReflow()};$('autoToggle').onclick=toggleAuto;$('themeToggle').onclick=()=>{const root=document.documentElement;root.dataset.theme=root.dataset.theme==='dark'?'light':'dark';paint()};$('translateLine').onclick=()=>askAI('translate',state.lines[state.index]?.text,state.index);$('voicePreviewEn').onclick=()=>{speechSynthesis.cancel();speakText('This is an English voice preview.')};$('voicePreviewZh').onclick=()=>{speechSynthesis.cancel();speakText('这是中文语音试听。')};for(const lang of ['en','zh'])$(`voice${lang==='en'?'En':'Zh'}`).onchange=e=>state.voice[lang]=e.target.value;updateVoices();speechSynthesis.onvoiceschanged=updateVoices;$('changeKey').onclick=()=>{$('keyInput').value='';$('keyDialog').showModal()};$('deleteKey').onclick=()=>{state.key=null;safeRemove('mobileReader.deepseekKey');notify('key 已删除')};$('saveKey').onclick=()=>{const value=$('keyInput').value.trim();if(!value)return;state.key=value;const saved=safeSet('mobileReader.deepseekKey',value);$('keyHint').textContent=saved?'':'此环境无法保存 key；本页关闭后会丢失。';$('keyDialog').close();if(!saved)notify('key 仅保存在当前页面');const pending=state.pendingAction;if(pending){state.pendingAction=null;if(pending.mode==='followup')sendFollowup();else askAI(pending.mode,pending.text,pending.index)}};$('cancelKey').onclick=()=>{state.pendingAction=null;$('keyDialog').close()};$('closeSheet').onclick=()=>$('sheet').hidden=true;$('abort').onclick=()=>state.abort?.abort();$('newChat').onclick=()=>{state.history=[];$('sheetBody').replaceChildren();notify('已开始新对话')};$('sendQuestion').onclick=sendFollowup;$('selectionMenu').onclick=e=>{const action=e.target.dataset.action;if(!action)return;$('selectionMenu').hidden=true;if(action==='speak'){controller.stop();speechSynthesis.cancel();speakText(state.selection)}else askAI(action,state.selection,state.selectedIndex)};let selectionTimer;document.addEventListener('selectionchange',()=>{clearTimeout(selectionTimer);selectionTimer=setTimeout(showSelectionMenu,300)});$('content').addEventListener('click',async e=>{if(selectionText())return;const page=e.target.closest('.pdf-page');if(page&&pdfSession){const entry=pdfSession.pages[Number(page.id.slice(5))-1];if(entry&&!entry.lines)await getPdfText(pdfSession,entry)}const index=indexNearPoint(e.clientX,e.clientY);controller.jump(valid=>{if(valid())setFocus(index)})});document.addEventListener('scroll',()=>{paint();queuePdfSchedule()},{passive:true});window.addEventListener('resize',scheduleReflow);window.addEventListener('orientationchange',scheduleReflow);document.addEventListener('visibilitychange',()=>{if(document.hidden&&controller.active){controller.stop();notify('返回后点 ▶ 继续',7000)}});document.addEventListener('dragover',e=>{e.preventDefault();document.body.classList.add('drop')});document.addEventListener('dragleave',()=>document.body.classList.remove('drop'));document.addEventListener('drop',e=>{e.preventDefault();document.body.classList.remove('drop');openFile(e.dataTransfer.files?.[0])})}
+let reflowTimer;function scheduleReflow(){clearTimeout(reflowTimer);reflowTimer=setTimeout(async()=>{if(!state.file)return;const old=state.index;if(state.kind==='pdf'){rebuildPdfLayout();setFocus(Math.min(old,state.lines.length-1),true,false)}else{state.lines=collectVisualLines();setFocus(Math.min(old,state.lines.length-1),false,false)}},250)}
 init();
 
 /*__APP_END__*/

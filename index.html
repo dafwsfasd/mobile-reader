@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>随身阅读</title>
+<style>
+:root{--bg:#f7f2e9;--surface:#fffaf2;--ink:#232322;--muted:#696a68;--accent:#6557d9;--accent-ink:#fff;--pink:#f8c7c5;--mint:#b8e6d1;--yellow:#f7dfa1;--border:#ddd6ca;--shade:rgba(22,21,31,.48)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#19191e;--surface:#29292f;--ink:#f4f2ed;--muted:#b5b2b3;--accent:#a99bff;--accent-ink:#19191e;--pink:#72484f;--mint:#35594b;--yellow:#695b39;--border:#45444d;--shade:rgba(0,0,0,.58)}}
+:root[data-theme="dark"]{--bg:#19191e;--surface:#29292f;--ink:#f4f2ed;--muted:#b5b2b3;--accent:#a99bff;--accent-ink:#19191e;--pink:#72484f;--mint:#35594b;--yellow:#695b39;--border:#45444d;--shade:rgba(0,0,0,.58)}
+[hidden]{display:none!important}*{box-sizing:border-box}html{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}body{margin:0;background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden}button,input,select,textarea{font:inherit}button{border:0;cursor:pointer;color:var(--ink)}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.top{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg)}.brand{font-size:20px;font-weight:800;white-space:nowrap}.file-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:var(--muted)}.small{min-height:44px;padding:9px 14px;border-radius:15px;background:var(--mint);font-weight:700}.home{max-width:660px;margin:7vh auto;padding:0 16px}.hero{background:var(--yellow);border-radius:32px;padding:32px 24px}.hero h1{font-size:clamp(32px,8vw,48px);line-height:1.1;margin:0 0 18px}.hero p{color:#4e493f}.open-big{background:var(--accent);color:var(--accent-ink);border-radius:20px;min-height:58px;padding:13px 25px;font-size:19px;font-weight:800}.recent{margin-top:28px}.recent h2{font-size:19px}.recent button{display:block;width:100%;text-align:left;background:var(--surface);border-radius:18px;margin:9px 0;padding:16px;min-height:54px;overflow:hidden;text-overflow:ellipsis}.hint,.status{color:var(--muted);font-size:14px}.status{position:fixed;left:16px;right:16px;top:74px;z-index:40;padding:12px 15px;background:var(--surface);border-radius:14px;box-shadow:0 5px 24px #0002}.reader{max-width:980px;margin:0 auto;padding:18px 16px calc(110px + env(safe-area-inset-bottom));}.content{font-size:var(--reader-size,18px);line-height:1.75;overflow-wrap:anywhere}.content.pdf-content{overflow-x:auto}.content h1,.content h2,.content h3{line-height:1.25;margin:1.4em 0 .65em}.content p,.content li{margin:.75em 0}.content pre,.content table{overflow:auto;max-width:100%;background:var(--surface);padding:14px;border-radius:16px}.content blockquote,.callout{margin:16px 0;padding:12px 18px;background:var(--mint);border-radius:18px}.content img{max-width:100%;height:auto}.content a{color:var(--accent)}.content mark{background:var(--yellow);border-radius:3px}.frontmatter{background:var(--surface);border-radius:16px;padding:12px 16px}.frontmatter summary{font-weight:700}.pdf-page{position:relative;margin:0 auto 20px;max-width:none;box-shadow:0 4px 22px #0002;background:white}.pdf-page canvas{display:block;width:100%;height:auto}.text-layer{position:absolute;inset:0;overflow:hidden;line-height:1;opacity:0.22}.text-layer span{position:absolute;color:transparent;white-space:pre;transform-origin:0 0}.text-layer ::selection{background:#6557d988}.page-label{position:absolute;right:8px;bottom:6px;background:#fff9;padding:2px 8px;border-radius:8px;color:#333;font-size:12px}.mask{position:fixed;z-index:15;pointer-events:none;background:var(--shade)}.focus-outline{position:fixed;z-index:15;pointer-events:none;border:3px solid var(--accent);border-radius:6px}.toolbar{position:fixed;z-index:20;bottom:0;left:0;right:0;display:flex;gap:8px;align-items:center;justify-content:center;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--bg);box-shadow:0 -5px 22px #0001}.tool{height:50px;min-width:48px;border-radius:17px;background:var(--surface);font-size:22px;font-weight:800;flex:1;max-width:120px}.tool.play{background:var(--accent);color:var(--accent-ink);flex:1.3}.tool.rate{font-size:16px;background:var(--yellow)}.tool.more{background:var(--pink)}.popover,.sheet,.dialog{background:var(--surface);color:var(--ink);box-shadow:0 -8px 30px #0003}.popover{position:fixed;z-index:35;right:12px;bottom:calc(76px + env(safe-area-inset-bottom));width:min(360px,calc(100vw - 24px));max-height:70vh;overflow:auto;padding:20px;border-radius:24px}.popover h2,.sheet h2{margin:0 0 14px}.field{display:block;margin:12px 0;font-weight:700}.field input,.field select,.sheet textarea,.dialog input{display:block;width:100%;min-height:44px;margin-top:6px;border:1px solid var(--border);border-radius:12px;padding:9px 12px;background:var(--bg);color:var(--ink)}.field input[type=range]{padding:0}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.chip{min-height:44px;border-radius:14px;padding:9px 14px;background:var(--mint);font-weight:700}.sheet{position:fixed;z-index:30;left:0;right:0;bottom:0;max-height:min(78vh,800px);display:flex;flex-direction:column;padding:20px 16px calc(16px + env(safe-area-inset-bottom));border-radius:24px 24px 0 0}.sheet-header{display:flex;align-items:center;justify-content:space-between;gap:12px}.sheet-body{overflow:auto;flex:1;min-height:90px}.sheet textarea{resize:vertical;min-height:80px}.answer{line-height:1.6;overflow-wrap:anywhere}.answer pre{white-space:pre-wrap}.quote{padding:10px;border-radius:12px;background:var(--yellow);white-space:pre-wrap}.select-menu{position:fixed;z-index:45;display:flex;gap:5px;padding:6px;background:var(--surface);border-radius:14px;box-shadow:0 6px 22px #0003}.select-menu button{min-height:44px;padding:8px 12px;border-radius:10px;background:var(--mint);font-weight:700}.dialog{position:fixed;z-index:60;top:50%;left:50%;transform:translate(-50%,-50%);width:min(390px,calc(100vw - 32px));border:0;border-radius:24px;padding:22px}.dialog::backdrop{background:#0008}.drop{outline:4px dashed var(--accent);outline-offset:-8px}@media(min-width:900px) and (orientation:landscape){.sheet{left:auto;width:400px;top:70px;max-height:none;border-radius:24px 0 0 0}}
+.ai-error{background:var(--pink);color:var(--ink);border-radius:14px;padding:10px 14px}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/13.0.2/markdown-it.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+</head><body>
+<header class="top"><strong class="brand">随身阅读</strong><span id="fileName" class="file-name"></span><span id="pdfZoom" class="row" hidden><button id="zoomOut" class="small" aria-label="缩小 PDF">−</button><button id="zoomIn" class="small" aria-label="放大 PDF">＋</button></span><button id="topOpen" class="small" hidden>打开文件</button></header>
+<input id="fileInput" type="file" accept=".pdf,.md,.markdown,.txt,.html,.htm,application/pdf,text/markdown,text/html,text/plain" hidden>
+<section id="home" class="home"><div class="hero"><h1>打开，接着读。</h1><p>PDF、Markdown、HTML 和文本，都留在这台设备上。</p><button id="openBig" class="open-big">打开文件</button></div><div class="recent"><h2>最近打开</h2><div id="recentList" class="hint">还没有记录</div></div></section>
+<main id="reader" class="reader" hidden><div id="content" class="content"></div></main>
+<div id="status" class="status" role="status" hidden></div>
+<div id="masks" hidden><div class="mask"></div><div class="mask"></div><div class="mask"></div><div class="mask"></div><div class="focus-outline"></div></div>
+<nav id="toolbar" class="toolbar" hidden aria-label="阅读控制"><button id="prev" class="tool" aria-label="上一行">↑</button><button id="play" class="tool play" aria-label="朗读">▶</button><button id="next" class="tool" aria-label="下一行">↓</button><button id="rate" class="tool rate">1.0×</button><button id="more" class="tool more" aria-label="更多">⋯</button></nav>
+<aside id="settings" class="popover" hidden><div class="row" style="justify-content:space-between"><h2>阅读设置</h2><button id="closeSettings" class="chip">关闭</button></div><label class="field">遮罩强度 <input id="shade" type="range" min="0" max="80" value="48"></label><label class="field">字号 <input id="fontSize" type="range" min="14" max="28" value="18"></label><label class="field">自动播放秒数 <input id="autoSeconds" type="number" min="1" max="60" value="4"></label><button id="autoToggle" class="chip">开启自动播放</button><div class="row" style="margin-top:12px"><button id="themeToggle" class="chip">切换夜间模式</button><button id="translateLine" class="chip">翻译当前行</button></div><label class="field">英文声音 <select id="voiceEn"></select></label><label class="field">中文声音 <select id="voiceZh"></select></label><div class="row"><button id="voicePreviewEn" class="chip">试听英文</button><button id="voicePreviewZh" class="chip">试听中文</button></div><p class="hint">iPhone：设置 → 辅助功能 → 朗读内容 → 声音，可下载更自然的增强声音。</p><label class="field">DeepSeek 模型 <input id="model" value="deepseek-chat" autocomplete="off"></label><div class="row"><button id="changeKey" class="chip">更换 key</button><button id="deleteKey" class="chip">删除 key</button></div></aside>
+<div id="selectionMenu" class="select-menu" hidden><button data-action="translate">翻译</button><button data-action="ask">问 AI</button><button data-action="speak">朗读</button></div>
+<section id="sheet" class="sheet" hidden><div class="sheet-header"><h2 id="sheetTitle">阅读助手</h2><div class="row"><button id="newChat" class="chip">新对话</button><button id="abort" class="chip">取消</button><button id="closeSheet" class="chip">关闭</button></div></div><div id="sheetBody" class="sheet-body"></div><div id="askForm" hidden><textarea id="question" placeholder="继续提问…"></textarea><button id="sendQuestion" class="open-big">发送</button></div></section>
+<dialog id="keyDialog" class="dialog"><h2>输入 DeepSeek API key</h2><p class="hint">key 只保存在这台设备的浏览器里，不会上传到别处。</p><input id="keyInput" type="password" autocomplete="off" placeholder="sk-…"><div class="row" style="margin-top:16px"><button id="saveKey" class="chip">保存</button><button id="cancelKey" class="chip">取消</button></div><p id="keyHint" class="hint"></p></dialog>
+<script type="module">
+import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs';
+/*__LIB_START__*/
+// BEGIN lib/focus.js
+// Input items use PDF viewport coordinates: x, y (baseline), width, height, text.
+function findGutter(items,pageWidth){
+ if(items.length<4)return null;
+ const minX=Math.min(...items.map(i=>i.x)),maxX=Math.max(...items.map(i=>i.x+i.width));
+ const width=pageWidth||maxX-minX,origin=pageWidth?0:minX;
+ if(!(width>0))return null;
+ const bins=600,counts=new Uint32Array(bins);
+ for(const item of items){const a=Math.max(0,Math.floor((item.x-origin)/width*bins)),b=Math.min(bins-1,Math.ceil((item.x+item.width-origin)/width*bins));for(let j=a;j<=b;j++)counts[j]++}
+ const low=Math.floor(bins*.3),high=Math.ceil(bins*.7),limit=Math.max(1,Math.floor(items.length*.09));
+ let best=null;
+ for(let i=low;i<high;){if(counts[i]>limit){i++;continue}let j=i;while(j<high&&counts[j]<=limit)j++;const start=origin+i/bins*width,end=origin+j/bins*width,center=(start+end)/2;
+ const left=items.filter(x=>x.x+x.width<=center).length,right=items.filter(x=>x.x>=center).length;
+ if(end-start>=width*.015&&left>=2&&right>=2){const score=(end-start)/width-Math.abs(center-(origin+width/2))/width*.12-Math.abs(left-right)/items.length*.05;if(!best||score>best.score)best={start,end,center,score}}
+ i=j}
+ return best;
+}
+function rowGroups(items,tolerance,unitScale=1){const rows=[];for(const item of items.sort((a,b)=>a.y-b.y||a.x-b.x)){let row=rows.find(r=>Math.abs(r.y-item.y)<=Math.max(tolerance*unitScale,Math.min(r.height,item.height)*.35));if(!row){row={y:item.y,height:item.height,items:[]};rows.push(row)}row.items.push(item);row.y=(row.y*(row.items.length-1)+item.y)/row.items.length;row.height=Math.max(row.height,item.height)}
+ return rows.flatMap(row=>{const groups=[];for(const item of row.items.sort((a,b)=>a.x-b.x)){let group=groups.at(-1);if(!group||item.x-(group.x+group.width)>Math.max(18*unitScale,item.height*1.8)){group={x:item.x,y:row.y,width:0,height:row.height,items:[]};groups.push(group)}group.items.push(item);group.width=Math.max(group.width,item.x+item.width-group.x)}return groups.map(g=>({...g,text:g.items.map(i=>i.text).join(' ').replace(/\s+/g,' ').trim()}))})}
+function orderHorizontalSegments(left,right,bodyHeight){const all=[...left,...right].sort((a,b)=>a.y-b.y);if(!all.length)return [];const cuts=[];for(let i=1;i<all.length;i++)if(all[i].y-all[i-1].y>=bodyHeight*2.5)cuts.push((all[i].y+all[i-1].y)/2);const ordered=[];let from=-Infinity;for(const to of [...cuts,Infinity]){ordered.push(...left.filter(x=>x.y>from&&x.y<to),...right.filter(x=>x.y>from&&x.y<to));from=to}return ordered}
+function clusterLines(items,{tolerance=4,pageWidth}={}){
+ const words=items.filter(i=>i.text?.trim()).map(i=>({...i,x:Number(i.x),y:Number(i.y),width:Number(i.width)||0,height:Number(i.height)||10}));
+ if(!words.length)return [];
+ const heights=words.map(i=>i.height).sort((a,b)=>a-b);const unitScale=(heights[Math.floor(heights.length/2)]||10)/10;
+ const gutter=findGutter(words,pageWidth);
+ let ordered;
+ if(!gutter)ordered=rowGroups(words,tolerance,unitScale).sort((a,b)=>a.y-b.y||a.x-b.x);
+ else{
+  const left=[],right=[],full=[];
+  for(const item of words){if(item.x+item.width<=gutter.center)left.push(item);else if(item.x>=gutter.center)right.push(item);else full.push(item)}
+  const L=rowGroups(left,tolerance,unitScale).sort((a,b)=>a.y-b.y||a.x-b.x),R=rowGroups(right,tolerance,unitScale).sort((a,b)=>a.y-b.y||a.x-b.x),F=rowGroups(full,tolerance,unitScale).sort((a,b)=>a.y-b.y||a.x-b.x);
+  ordered=[];let previous=-Infinity;
+  for(const f of F){ordered.push(...orderHorizontalSegments(L.filter(x=>x.y>previous&&x.y<f.y),R.filter(x=>x.y>previous&&x.y<f.y),heights[Math.floor(heights.length/2)]),f);previous=f.y}
+  ordered.push(...orderHorizontalSegments(L.filter(x=>x.y>previous),R.filter(x=>x.y>previous),heights[Math.floor(heights.length/2)]));
+ }
+ return ordered.map((r,index)=>({index,x:r.x,y:r.y,width:r.width,height:r.height,text:r.text}));
+}
+
+// END lib/focus.js
+// BEGIN lib/markdown-focus.js
+// Rectangles are viewport-independent page coordinates. Code/table blocks
+// are supplied as one atomic rectangle by the caller.
+function groupVisualRects(rects,tolerance=3){const sorted=rects.filter(r=>r.right>r.left&&r.bottom>r.top).sort((a,b)=>a.top-b.top||a.left-b.left);const lines=[];for(const r of sorted){let line=!r.atomic&&lines.find(l=>!l.atomic&&l.blockIndex===r.blockIndex&&Math.abs(l.top-r.top)<=tolerance);if(!line){line={top:r.top,bottom:r.bottom,left:r.left,right:r.right,blockIndex:r.blockIndex,atomic:!!r.atomic,text:r.text||'',blockLine:0};lines.push(line)}else{line.top=Math.min(line.top,r.top);line.bottom=Math.max(line.bottom,r.bottom);line.left=Math.min(line.left,r.left);line.right=Math.max(line.right,r.right);if(r.text)line.text+=' '+r.text}}const counts=new Map();for(const l of lines){l.blockLine=counts.get(l.blockIndex)||0;counts.set(l.blockIndex,l.blockLine+1)}return lines}
+
+// END lib/markdown-focus.js
+// BEGIN lib/speech-voices.js
+const YEAR=/\b(?:19|20)\d{2}[a-z]?\b/;
+// Citations: numeric [12], [13, 14]; author-year [Name et al., 2014] / (Name, 2014); and author-year brackets cut by a line break.
+function filterSpokenText(text){let value=String(text||'').trim();if(/^\d+$/.test(value))return '';
+ value=value.replace(/\[\s*\d+(?:\s*[,，–-]\s*\d+)*\s*\]/g,'');
+ value=value.replace(/[\[(]([^\[\]()]{0,160})[\])]/g,(m,inner)=>YEAR.test(inner)&&(/[A-Z]/.test(inner)||/^\s*(?:19|20)\d{2}[a-z]?\s*$/.test(inner))?'':m);
+ const open=value.lastIndexOf('[');if(open>=0&&value.indexOf(']',open)<0&&YEAR.test(value.slice(open))||open>=0&&value.indexOf(']',open)<0&&/et al/.test(value.slice(open)))value=value.slice(0,open);
+ const close=value.indexOf(']');if(close>=0&&value.lastIndexOf('[',close)<0&&YEAR.test(value.slice(0,close)))value=value.slice(close+1);
+ return value.replace(/\s+([,.;:])/g,'$1').replace(/^[\s,.;:]+(?=\S)/,m=>/^\s*[.]/.test(m)?'':'').replace(/\s+/g,' ').trim()}
+function preparePdfSpeechLine(lines,index){let text=lines[index]?.text||'';if(index>0){const previous=lines[index-1]?.text?.trim()||'';if(/-$/.test(previous)&&/^[a-z]+/.test(text.trimStart()))text=text.trimStart().replace(/^[a-z]+\b\s*/, '')}
+ const next=lines[index+1]?.text?.trimStart()||'';if(/-$/.test(text.trimEnd())&&/^[a-z]+/.test(next)){const first=next.match(/^[a-z]+/)[0];text=text.trimEnd().slice(0,-1)+first}return filterSpokenText(text)}
+function languageForText(text){const chinese=(String(text).match(/[\u3400-\u9fff]/g)||[]).length,latin=(String(text).match(/[A-Za-z0-9]/g)||[]).length;return chinese/(chinese+latin||1)>.3?'zh':'en'}
+const SPEECH_RATES=[0.8,1,1.2,1.5,2];
+function nextSpeechRate(rate){const i=SPEECH_RATES.findIndex(x=>Math.abs(x-Number(rate))<.001);return SPEECH_RATES[(i+1)%SPEECH_RATES.length]}
+function formatSpeechRate(rate){return `${Number(rate).toFixed(1)}×`}
+const NOVELTY=['Albert','Bad News','Bahh','Bells','Boing','Bubbles','Cellos','Good News','Jester','Organ','Superstar','Trinoids','Whisper','Wobble','Zarvox','Fred','Junior','Kathy','Ralph','Eddy','Flo','Grandma','Grandpa','Reed','Rocko','Sandy','Shelley'];
+const EN_PREFERRED=['Ava','Zoe','Evan','Samantha','Allison','Susan','Tom','Karen','Daniel','Serena','Moira'];
+const ZH_PREFERRED=['Lili','Yue','Tingting','Meijia','Sinji'];
+function isNoveltyVoice(name){return NOVELTY.some(x=>String(name||'').toLowerCase().startsWith(x.toLowerCase()))}
+function voicesForLanguage(voices,language){const prefix=language==='zh'?'zh':'en';return Array.from(voices||[]).filter(v=>String(v.lang||'').toLowerCase().startsWith(prefix))}
+function chooseDefaultVoice(voices,language){
+ const candidates=voicesForLanguage(voices,language).filter(v=>!isNoveltyVoice(v.name));
+ const preferred=language==='zh'?ZH_PREFERRED:EN_PREFERRED;
+ const rank=v=>{const name=String(v.name||'');if(/premium/i.test(name))return [0,0];if(/enhanced/i.test(name))return [1,0];const i=preferred.findIndex(x=>name.toLowerCase().startsWith(x.toLowerCase()));if(i>=0)return [2,i];return [3,/^zh[-_]cn$/i.test(v.lang)||/^en[-_]us$/i.test(v.lang)?0:1]};
+ return candidates.sort((a,b)=>{const x=rank(a),y=rank(b);return x[0]-y[0]||x[1]-y[1]})[0]||null;
+}
+
+// END lib/speech-voices.js
+// BEGIN lib/line-speech.js
+// Shared, UI-independent speech progression for PDF and Markdown.
+// Only the current utterance token may advance. A manual jump invalidates
+// callbacks before cancel(), because Gecko may call onend/onerror on cancel.
+function createLineSpeechController({getText,advance,paint,speak,cancel,onStateChange=()=>{}}){
+ let active=false,token=0;
+ const stop=()=>{const wasActive=active;active=false;token++;cancel();if(wasActive)onStateChange(false)};
+ function play(){
+  const generation=token;
+  function attempt(skipped){
+   if(!active||generation!==token)return;
+   paint();
+   const result=getText();
+   if(result&&typeof result.then==='function'){void result.then(text=>continueWith(text,skipped));return}
+   continueWith(result,skipped);
+  }
+  function continueWith(text,skipped){
+   if(!active||generation!==token)return;
+   if(text){
+    const mine=++token;
+    speak(text,{
+     onstart:()=>{if(active&&mine===token)paint()},
+     onend:()=>{if(active&&mine===token)void finished(mine)},
+     onerror:error=>{if(!active||mine!==token)return;if(error==='interrupted'||error==='canceled')return;stop()}
+    });
+    return;
+   }
+   if(skipped>=50){stop();return}
+   Promise.resolve(advance(()=>active&&generation===token)).then(moved=>{if(!moved){if(active&&generation===token)stop();return}attempt(skipped+1)});
+  }
+  attempt(0);
+ }
+ async function finished(mine){
+  if(!active||mine!==token)return;
+  token++;
+  if(!await advance(()=>active&&token===mine+1)){if(active&&token===mine+1)stop();return}
+  if(active&&token===mine+1)await play();
+ }
+ return {
+  get active(){return active},get token(){return token},
+  start(){if(active)return;active=true;onStateChange(true);void play()},
+  stop,
+  async jump(move){const restart=active,mine=++token;if(restart)cancel();await move(()=>token===mine);if(restart&&active&&token===mine)await play()},
+  autoTick(move){if(active)return false;move();return true}
+ };
+}
+
+// END lib/line-speech.js
+// BEGIN lib/reader-utils.js
+const RECENT_KEY='mobileReader.recent';
+const MAX_CONTEXT=6000;
+
+// A conservative first pass; DOMPurify performs the final browser sanitization.
+function precleanHtml(html){
+ return String(html||'')
+  .replace(/<(script|iframe|form|style|object|embed|template|svg|math)\b[^>]*>[\s\S]*?<\/\1\s*>/gi,'')
+  .replace(/<(script|iframe|form|style|object|embed|template|svg|math|link|base|meta)\b[^>]*\/?\s*>/gi,'')
+  .replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,'')
+  .replace(/\s+style\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,'');
+}
+
+function parseSseChunk(buffer,chunk){
+ const input=(buffer+chunk).replace(/\r\n/g,'\n');
+ const parts=input.split('\n\n');
+ const rest=parts.pop()||'';
+ const events=[];
+ for(const part of parts){
+  const data=part.split('\n').filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trimStart()).join('\n');
+  if(!data)continue;
+  if(data==='[DONE]'){events.push({done:true});continue}
+  try{const value=JSON.parse(data);events.push({text:value.choices?.[0]?.delta?.content||'',value})}catch{}
+ }
+ return {rest,events};
+}
+
+function contextForLines(lines,index,max=MAX_CONTEXT){
+ const safe=Math.max(0,Math.min(index,lines.length-1));
+ let start=safe,end=safe,length=String(lines[safe]?.text||'').length;
+ while(start>0||end<lines.length-1){
+  const left=start>0?String(lines[start-1]?.text||'').length+1:Infinity;
+  const right=end<lines.length-1?String(lines[end+1]?.text||'').length+1:Infinity;
+  if(left<=right&&length+left<=max){start--;length+=left}
+  else if(length+right<=max){end++;length+=right}
+  else if(length+left<=max){start--;length+=left}
+  else break;
+ }
+ return lines.slice(start,end+1).map(line=>line.text||'').join('\n').slice(0,max);
+}
+
+function recentRecord(file,position){
+ return {name:String(file.name||''),type:String(file.type||''),position:Math.max(0,Math.floor(Number(position)||0))};
+}
+function updateRecent(records,file,position){
+ const next=recentRecord(file,position);
+ return [next,...(Array.isArray(records)?records:[]).filter(item=>item.name!==next.name||item.type!==next.type).map(item=>recentRecord(item,item.position))].slice(0,8);
+}
+
+// END lib/reader-utils.js
+/*__LIB_END__*/
+/*__APP_START__*/
+const $=id=>document.getElementById(id);
+const state={file:null,kind:null,lines:[],index:0,pdf:null,pdfBytes:null,zoom:1,rate:1,autoTimer:null,key:null,history:[],abort:null,selection:'',selectedIndex:0,voice:{en:'',zh:''},pendingAction:null};
+const safeGet=key=>{try{return localStorage.getItem(key)}catch{return null}};
+const safeSet=(key,value)=>{try{localStorage.setItem(key,value);return true}catch{return false}};
+const safeRemove=key=>{try{localStorage.removeItem(key)}catch{}};
+const recent=()=>{try{return JSON.parse(safeGet(RECENT_KEY)||'[]')}catch{return []}};
+const notify=(message,delay=3800)=>{const el=$('status');el.textContent=message;el.hidden=false;clearTimeout(notify.timer);notify.timer=setTimeout(()=>el.hidden=true,delay)};
+const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function renderRecent(){const box=$('recentList'),items=recent();box.replaceChildren();if(!items.length){box.textContent='还没有记录';return}for(const item of items){const b=document.createElement('button');b.textContent=`${item.name} · 第 ${item.position+1} 行`;b.onclick=()=>{notify('请重新选择这个文件，会回到上次位置');$('fileInput').click()};box.append(b)}}
+function remember(){if(!state.file)return;safeSet(RECENT_KEY,JSON.stringify(updateRecent(recent(),state.file,state.index)));renderRecent()}
+function setFocus(index,scroll=true){if(!state.lines.length)return;state.index=Math.max(0,Math.min(state.lines.length-1,index));remember();paint();if(scroll){const r=lineRect(state.lines[state.index]);if(r)window.scrollTo({top:window.scrollY+r.top-window.innerHeight*.29,behavior:'smooth'})}}
+function lineRect(line){if(!line)return null;if(line.kind==='pdf'){const p=$(`page-${line.page}`);if(!p)return null;const box=p.getBoundingClientRect(),scale=box.width/line.pageWidth;return {left:box.left+line.x*scale,right:box.left+(line.x+line.width)*scale,top:box.top+(line.y-line.height)*scale,bottom:box.top+(line.y+3)*scale}}const top=line.top-window.scrollY,bottom=line.bottom-window.scrollY;return {left:line.left,right:line.right,top,bottom}}
+function paint(){const wraps=$('masks'),r=lineRect(state.lines[state.index]);if(!r||$('reader').hidden){wraps.hidden=true;return}wraps.hidden=false;const a=Math.max(0,Math.min(innerHeight,r.top-4)),b=Math.max(a,Math.min(innerHeight,r.bottom+4)),l=Math.max(0,Math.min(innerWidth,r.left-4)),right=Math.max(l,Math.min(innerWidth,r.right+4));const m=wraps.querySelectorAll('.mask');[[0,0,innerWidth,a],[0,b,innerWidth,innerHeight-b],[0,a,l,b-a],[right,a,innerWidth-right,b-a]].forEach(([x,y,w,h],i)=>Object.assign(m[i].style,{left:`${x}px`,top:`${y}px`,width:`${w}px`,height:`${h}px`}));Object.assign(wraps.querySelector('.focus-outline').style,{left:`${l}px`,top:`${a}px`,width:`${right-l}px`,height:`${b-a}px`})}
+function moveBy(step,valid=()=>true){if(!valid())return false;const next=state.index+step;if(next<0||next>=state.lines.length)return false;setFocus(next);return true}
+function speakText(text,callbacks={}){if(!('speechSynthesis'in window)){notify('当前浏览器不支持朗读');return}const utterance=new SpeechSynthesisUtterance(text);utterance.rate=state.rate;const lang=languageForText(text);utterance.lang=lang==='zh'?'zh-CN':'en-US';const voices=speechSynthesis.getVoices();utterance.voice=voices.find(v=>v.voiceURI===state.voice[lang])||chooseDefaultVoice(voices,lang);utterance.onstart=callbacks.onstart||null;utterance.onend=callbacks.onend||null;utterance.onerror=e=>callbacks.onerror?.(e.error);speechSynthesis.speak(utterance)}
+const controller=createLineSpeechController({getText:()=>{const l=state.lines[state.index];return l?.kind==='pdf'?preparePdfSpeechLine(state.lines.filter(x=>x.page===l.page),state.lines.filter(x=>x.page===l.page).indexOf(l)):filterSpokenText(l?.text||'')},advance:valid=>moveBy(1,valid),paint,onStateChange:on=>{$('play').textContent=on?'❚❚':'▶';$('play').setAttribute('aria-label',on?'暂停朗读':'朗读');if(on)stopAuto()},speak:speakText,cancel:()=>speechSynthesis?.cancel()});
+function stopAuto(){clearInterval(state.autoTimer);state.autoTimer=null;$('autoToggle').textContent='开启自动播放'}
+function toggleAuto(){if(state.autoTimer){stopAuto();return}controller.stop();const seconds=Math.max(1,Math.min(60,Number($('autoSeconds').value)||4));state.autoTimer=setInterval(()=>{if(!controller.autoTick(()=>moveBy(1)))return;if(state.index===state.lines.length-1)stopAuto()},seconds*1000);$('autoToggle').textContent='停止自动播放'}
+function updateVoices(){for(const lang of ['en','zh']){const select=$(`voice${lang==='en'?'En':'Zh'}`),old=state.voice[lang];select.replaceChildren(new Option('自动选择',''));for(const v of voicesForLanguage(speechSynthesis.getVoices(),lang))select.add(new Option(`${v.name} (${v.lang})`,v.voiceURI));select.value=old||''}}
+function markdownSource(raw){let source=raw,front='';const m=raw.match(/^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/);if(m){front=`<details class="frontmatter"><summary>文档信息</summary><pre>${esc(m[1])}</pre></details>`;source=raw.slice(m[0].length)}source=source.replace(/%%[\s\S]*?%%/g,'').replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,(_,a,b)=>b||a);source=source.replace(/^>\s*\[!(\w+)\](.*)$/gm,(_,type,title)=>`> **${type.toUpperCase()}${title?' · '+title.trim():''}**`);return {front,source}}
+function cleanHtml(raw){const parsed=new DOMParser().parseFromString(precleanHtml(raw),'text/html');parsed.querySelectorAll('link,style,script,iframe,form,base,meta,object,embed').forEach(el=>el.remove());const html=DOMPurify.sanitize(parsed.body.innerHTML,{FORBID_TAGS:['script','iframe','form','style','link','base','object','embed','svg','math'],FORBID_ATTR:['style','srcset','formaction'],ALLOW_DATA_ATTR:false,ALLOW_UNKNOWN_PROTOCOLS:false});const holder=document.createElement('div');holder.innerHTML=html;holder.querySelectorAll('img').forEach(img=>{const src=img.getAttribute('src')||'';if(!/^https:\/\//i.test(src)&&!/^data:image\/(png|jpeg|gif|webp);base64,/i.test(src))img.remove();else{img.removeAttribute('onerror');img.loading='lazy'}});holder.querySelectorAll('a').forEach(a=>{const href=a.getAttribute('href')||'';if(!/^https:\/\//i.test(href))a.removeAttribute('href');else{a.target='_blank';a.rel='noopener noreferrer'}});return holder.innerHTML}
+function applyObsidianMarks(root){const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const nodes=[];let node;while((node=walker.nextNode()))if(node.textContent.includes('=='))nodes.push(node);for(const textNode of nodes){const parts=textNode.textContent.split(/==([^=\n]+)==/g);if(parts.length<2)continue;const fragment=document.createDocumentFragment();parts.forEach((part,i)=>{if(i%2){const mark=document.createElement('mark');mark.textContent=part;fragment.append(mark)}else fragment.append(document.createTextNode(part))});textNode.replaceWith(fragment)}}
+function renderText(text){$('content').replaceChildren();for(const para of text.replace(/\r\n?/g,'\n').split(/\n\s*\n/)){const p=document.createElement('p');p.textContent=para;$('content').append(p)}}
+function collectVisualLines(){const root=$('content'),selector='h1,h2,h3,h4,h5,h6,p,li,pre,table,blockquote,figcaption,div.callout,details';const blocks=[...root.querySelectorAll(selector)].filter(el=>!el.parentElement.closest('pre,table,details')&&(!el.matches('blockquote,li,div.callout')||!el.querySelector('p,pre,table')));const rects=[];blocks.forEach((block,blockIndex)=>{if(block.matches('pre,table,details')){const r=block.getBoundingClientRect();rects.push({left:r.left,right:r.right,top:r.top+scrollY,bottom:r.bottom+scrollY,text:block.innerText,blockIndex,atomic:true,heading:false});return}const walker=document.createTreeWalker(block,NodeFilter.SHOW_TEXT,{acceptNode:n=>n.parentElement.closest('pre,table,details')?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT});let node;while((node=walker.nextNode())){const text=node.textContent||'';const re=/\S+\s*/g;let match;while((match=re.exec(text))){const range=document.createRange();range.setStart(node,match.index);range.setEnd(node,match.index+match[0].length);for(const r of range.getClientRects())rects.push({left:r.left,right:r.right,top:r.top+scrollY,bottom:r.bottom+scrollY,text:match[0].trim(),blockIndex,atomic:false,heading:block.matches('h1,h2,h3,h4,h5,h6')})}}});return groupVisualRects(rects).map((l,i)=>({...l,index:i,kind:'visual',heading:blocks[l.blockIndex]?.matches('h1,h2,h3,h4,h5,h6')||false}))}
+async function renderPdf(bytes){const doc=await pdfjsLib.getDocument({data:bytes.slice()}).promise;state.pdf=doc;const root=$('content');root.replaceChildren();const all=[];for(let n=1;n<=doc.numPages;n++){const page=await doc.getPage(n),base=page.getViewport({scale:1}),width=Math.max(100,Math.min(root.clientWidth,innerWidth-32))*state.zoom,viewport=page.getViewport({scale:width/base.width});const wrap=document.createElement('div');wrap.className='pdf-page';wrap.id=`page-${n}`;wrap.style.width=`${viewport.width}px`;wrap.style.height=`${viewport.height}px`;const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');const pixelRatio=Math.min(devicePixelRatio||1,2);canvas.width=Math.ceil(viewport.width*pixelRatio);canvas.height=Math.ceil(viewport.height*pixelRatio);canvas.style.width=`${viewport.width}px`;canvas.style.height=`${viewport.height}px`;wrap.append(canvas);const layer=document.createElement('div');layer.className='text-layer';wrap.append(layer);const label=document.createElement('span');label.className='page-label';label.textContent=n;wrap.append(label);root.append(wrap);await page.render({canvasContext:ctx,viewport,transform:[pixelRatio,0,0,pixelRatio,0,0]}).promise;const text=await page.getTextContent();try{await new pdfjsLib.TextLayer({textContentSource:text,container:layer,viewport}).render()}catch{for(const item of text.items){const span=document.createElement('span');span.textContent=item.str;const [x,y]=viewport.convertToViewportPoint(item.transform[4],item.transform[5]);Object.assign(span.style,{left:`${x}px`,top:`${y-item.height*viewport.scale}px`,fontSize:`${item.height*viewport.scale}px`});layer.append(span)}}const items=text.items.filter(x=>x.str?.trim()).map(item=>{const [x,y]=viewport.convertToViewportPoint(item.transform[4],item.transform[5]);return {x,y,width:item.width*viewport.scale,height:Math.abs(item.transform[3])*viewport.scale||item.height*viewport.scale,text:item.str}});all.push(...clusterLines(items,{pageWidth:viewport.width}).map(line=>({...line,kind:'pdf',page:n,pageWidth:viewport.width})))}state.lines=all.map((line,index)=>({...line,index}))}
+function detectKind(file){const name=file.name.toLowerCase();if(name.endsWith('.pdf')||file.type==='application/pdf')return 'pdf';if(/\.md$|\.markdown$/.test(name))return 'md';if(/\.html?$/.test(name))return 'html';return 'txt'}
+async function openFile(file){if(!file)return;controller.stop();stopAuto();state.abort?.abort();state.file={name:file.name,type:file.type||detectKind(file)};state.kind=detectKind(file);state.history=[];state.index=0;state.zoom=1;$('home').hidden=true;$('reader').hidden=false;$('toolbar').hidden=false;$('topOpen').hidden=false;$('pdfZoom').hidden=state.kind!=='pdf';$('content').classList.toggle('pdf-content',state.kind==='pdf');$('fileName').textContent=file.name;notify('正在打开文件…',30000);try{if(state.kind==='pdf'){state.pdfBytes=new Uint8Array(await file.arrayBuffer());await renderPdf(state.pdfBytes)}else{const raw=await file.text();if(state.kind==='md'){if(!window.markdownit||!window.DOMPurify)throw new Error('阅读库未加载');const {front,source}=markdownSource(raw);const md=markdownit({html:false,linkify:true,breaks:false});const safe=DOMPurify.sanitize(md.render(source),{FORBID_TAGS:['script','iframe','form'],FORBID_ATTR:['style']});$('content').innerHTML=front+safe;applyObsidianMarks($('content'))}else if(state.kind==='html'){if(!window.DOMPurify)throw new Error('阅读库未加载');$('content').innerHTML=cleanHtml(raw)}else renderText(raw);state.lines=collectVisualLines()}const saved=recent().find(x=>x.name===file.name&&x.type===state.file.type);setFocus(saved?.position||0,true);$('status').hidden=true;if(!state.lines.length)notify('文件中没有可阅读的文字')}catch(error){notify(`打开失败：${error.message||'文件无法读取'}`,7000);$('home').hidden=false;$('reader').hidden=true;$('toolbar').hidden=true;$('topOpen').hidden=true;$('pdfZoom').hidden=true}}
+function indexNearPoint(x,y){let best=state.index,distance=Infinity;for(const line of state.lines){const r=lineRect(line);if(!r)continue;const d=Math.max(0,r.top-y,y-r.bottom)*3+Math.max(0,r.left-x,x-r.right);if(d<distance){distance=d;best=line.index}}return best}
+function selectionText(){const selection=window.getSelection();if(!selection||selection.isCollapsed)return '';return selection.toString().trim()}
+function showSelectionMenu(){const text=selectionText(),menu=$('selectionMenu');if(!text||!$('content').contains(window.getSelection()?.anchorNode)){menu.hidden=true;return}const r=window.getSelection().getRangeAt(0).getBoundingClientRect();state.selection=text;state.selectedIndex=indexNearPoint(r.left,r.top);menu.hidden=false;const top=Math.min(innerHeight-menu.offsetHeight-12,Math.max(8,r.bottom+12));Object.assign(menu.style,{top:`${top}px`,left:`${Math.max(8,Math.min(innerWidth-menu.offsetWidth-8,r.left))}px`})}
+function selectedContext(index){const line=state.lines[index];if(!line)return '';let lines=state.lines;if(state.kind==='pdf')lines=lines.filter(x=>x.page===line.page);else{let start=index;while(start>0&&!state.lines[start].heading)start--;let end=index+1;while(end<state.lines.length&&!state.lines[end].heading)end++;lines=state.lines.slice(start,end)}return contextForLines(lines,Math.max(0,lines.indexOf(line)))}
+function renderedAnswer(text){if(!window.markdownit||!window.DOMPurify)return esc(text).replace(/\n/g,'<br>');return DOMPurify.sanitize(markdownit({html:false,linkify:true}).render(text),{FORBID_TAGS:['script','iframe','form'],FORBID_ATTR:['style']})}
+function keyAvailable(){state.key=state.key||safeGet('mobileReader.deepseekKey');if(state.key)return true;$('keyInput').value='';$('keyDialog').showModal();return false}
+function appendMessage(role,content){const div=document.createElement('div');div.className=role==='user'?'quote':'answer';if(role==='user')div.textContent=content;else div.innerHTML=renderedAnswer(content);$('sheetBody').append(div);$('sheetBody').scrollTop=$('sheetBody').scrollHeight;return div}
+async function streamDeepSeek(messages,onText){state.lastError='';if(!keyAvailable())return false;state.abort?.abort();const abort=new AbortController();state.abort=abort;try{const response=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${state.key}`},body:JSON.stringify({model:$('model').value.trim()||'deepseek-chat',stream:true,messages}),signal:abort.signal});if(!response.ok){if(response.status===401)throw new Error('key 无效，请在 ⋯ 里更换');if(response.status===402)throw new Error('DeepSeek 余额不足');const body=await response.text();if(/insufficient|balance|余额不足/i.test(body))throw new Error('DeepSeek 余额不足');throw new Error(`DeepSeek 请求失败（${response.status}）`)}const reader=response.body.getReader(),decoder=new TextDecoder();let rest='',done=false;while(!done){const part=await reader.read();if(part.done)break;const result=parseSseChunk(rest,decoder.decode(part.value,{stream:true}));rest=result.rest;for(const event of result.events){if(event.done){done=true;break}if(event.text)onText(event.text)}}return true}catch(error){if(error.name==='AbortError'){notify('已取消请求');return false}state.lastError=error instanceof TypeError?'连不上 DeepSeek':error.message||'连不上 DeepSeek';notify(state.lastError,6500);return false}finally{if(state.abort===abort)state.abort=null}}
+function openSheet(mode){$('sheet').hidden=false;$('sheetTitle').textContent=mode==='translate'?'翻译':'问 AI';$('askForm').hidden=mode==='translate';$('newChat').hidden=mode==='translate';$('sheetBody').replaceChildren();$('settings').hidden=true}
+async function askAI(mode,text=state.selection,index=state.selectedIndex){if(!text)return;state.pendingAction={mode,text,index};if(!keyAvailable())return;state.pendingAction=null;const context=selectedContext(index),line=state.lines[index],location=state.kind==='pdf'?`第 ${line?.page||1} 页`:'当前小节';openSheet(mode);if(mode==='ask')appendMessage('user',text);const user=mode==='translate'?`请翻译并解释选中文本：\n${text}\n\n文件：${state.file.name}\n位置：${location}\n前后两行：\n${state.lines.slice(Math.max(0,index-2),index+3).map(l=>l.text).join('\n')}`:`引用：${text}\n文件：${state.file.name}\n位置：${location}\n上下文：\n${context}`;const system='你是阅读助手。用简体中文回答，术语保留英文。只根据给定上下文回答。'+(mode==='translate'?'先给中文译文，再用一两句话结合上下文解释。':'');const output=appendMessage('assistant','');let answer='';const messages=[{role:'system',content:system},...state.history,{role:'user',content:user}];const ok=await streamDeepSeek(messages,chunk=>{answer+=chunk;output.innerHTML=renderedAnswer(answer);$('sheetBody').scrollTop=$('sheetBody').scrollHeight});if(!ok&&state.lastError&&!answer){output.textContent='⚠️ '+state.lastError;output.classList.add('ai-error')}if(ok&&mode==='ask')state.history.push({role:'user',content:user},{role:'assistant',content:answer})}
+function sendFollowup(){const q=$('question').value.trim();if(!q)return;if(!keyAvailable()){state.pendingAction={mode:'followup',text:q};return}$('question').value='';appendMessage('user',q);const output=appendMessage('assistant','');let answer='';const messages=[{role:'system',content:'你是阅读助手。用简体中文回答，术语保留英文。只根据给定上下文回答。'},...state.history,{role:'user',content:q}];streamDeepSeek(messages,chunk=>{answer+=chunk;output.innerHTML=renderedAnswer(answer)}).then(ok=>{if(!ok&&state.lastError&&!answer){output.textContent='⚠️ '+state.lastError;output.classList.add('ai-error')}if(ok)state.history.push({role:'user',content:q},{role:'assistant',content:answer})})}
+function init(){renderRecent();state.key=safeGet('mobileReader.deepseekKey');$('openBig').onclick=$('topOpen').onclick=()=>$('fileInput').click();$('zoomOut').onclick=()=>{state.zoom=Math.max(.6,Math.round((state.zoom-.2)*10)/10);scheduleReflow()};$('zoomIn').onclick=()=>{state.zoom=Math.min(3,Math.round((state.zoom+.2)*10)/10);scheduleReflow()};$('fileInput').onchange=e=>{openFile(e.target.files?.[0]);e.target.value=''};$('prev').onclick=()=>{controller.jump(valid=>moveBy(-1,valid))};$('next').onclick=()=>{controller.jump(valid=>moveBy(1,valid))};$('play').onclick=()=>{if(controller.active)controller.stop();else controller.start()};$('rate').onclick=()=>{state.rate=nextSpeechRate(state.rate);$('rate').textContent=formatSpeechRate(state.rate)};$('more').onclick=()=>$('settings').hidden=!$('settings').hidden;$('closeSettings').onclick=()=>$('settings').hidden=true;$('shade').oninput=e=>document.documentElement.style.setProperty('--shade',`rgba(22,21,31,${Number(e.target.value)/100})`);$('fontSize').oninput=e=>{document.documentElement.style.setProperty('--reader-size',`${e.target.value}px`);scheduleReflow()};$('autoToggle').onclick=toggleAuto;$('themeToggle').onclick=()=>{const root=document.documentElement;root.dataset.theme=root.dataset.theme==='dark'?'light':'dark';paint()};$('translateLine').onclick=()=>askAI('translate',state.lines[state.index]?.text,state.index);$('voicePreviewEn').onclick=()=>{speechSynthesis.cancel();speakText('This is an English voice preview.')};$('voicePreviewZh').onclick=()=>{speechSynthesis.cancel();speakText('这是中文语音试听。')};for(const lang of ['en','zh'])$(`voice${lang==='en'?'En':'Zh'}`).onchange=e=>state.voice[lang]=e.target.value;updateVoices();speechSynthesis.onvoiceschanged=updateVoices;$('changeKey').onclick=()=>{$('keyInput').value='';$('keyDialog').showModal()};$('deleteKey').onclick=()=>{state.key=null;safeRemove('mobileReader.deepseekKey');notify('key 已删除')};$('saveKey').onclick=()=>{const value=$('keyInput').value.trim();if(!value)return;state.key=value;const saved=safeSet('mobileReader.deepseekKey',value);$('keyHint').textContent=saved?'':'此环境无法保存 key；本页关闭后会丢失。';$('keyDialog').close();if(!saved)notify('key 仅保存在当前页面');const pending=state.pendingAction;if(pending){state.pendingAction=null;if(pending.mode==='followup')sendFollowup();else askAI(pending.mode,pending.text,pending.index)}};$('cancelKey').onclick=()=>{state.pendingAction=null;$('keyDialog').close()};$('closeSheet').onclick=()=>$('sheet').hidden=true;$('abort').onclick=()=>state.abort?.abort();$('newChat').onclick=()=>{state.history=[];$('sheetBody').replaceChildren();notify('已开始新对话')};$('sendQuestion').onclick=sendFollowup;$('selectionMenu').onclick=e=>{const action=e.target.dataset.action;if(!action)return;$('selectionMenu').hidden=true;if(action==='speak'){controller.stop();speechSynthesis.cancel();speakText(state.selection)}else askAI(action,state.selection,state.selectedIndex)};let selectionTimer;document.addEventListener('selectionchange',()=>{clearTimeout(selectionTimer);selectionTimer=setTimeout(showSelectionMenu,300)});$('content').addEventListener('click',e=>{if(selectionText())return;const index=indexNearPoint(e.clientX,e.clientY);controller.jump(valid=>{if(valid())setFocus(index)})});document.addEventListener('scroll',paint,{passive:true});window.addEventListener('resize',scheduleReflow);window.addEventListener('orientationchange',scheduleReflow);document.addEventListener('visibilitychange',()=>{if(document.hidden&&controller.active){controller.stop();notify('返回后点 ▶ 继续',7000)}});document.addEventListener('dragover',e=>{e.preventDefault();document.body.classList.add('drop')});document.addEventListener('dragleave',()=>document.body.classList.remove('drop'));document.addEventListener('drop',e=>{e.preventDefault();document.body.classList.remove('drop');openFile(e.dataTransfer.files?.[0])})}
+let reflowTimer;function scheduleReflow(){clearTimeout(reflowTimer);reflowTimer=setTimeout(async()=>{if(!state.file)return;const old=state.index;if(state.kind==='pdf'){if(state.pdfBytes)await renderPdf(state.pdfBytes);else{paint();return}}else state.lines=collectVisualLines();setFocus(Math.min(old,state.lines.length-1),false)},250)}
+init();
+
+/*__APP_END__*/
+</script></body></html>
